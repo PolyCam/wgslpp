@@ -5,15 +5,24 @@ use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, DidSaveTextDocument,
     PublishDiagnostics,
 };
-use lsp_types::request::{DocumentSymbolRequest, GotoDefinition, HoverRequest};
+use lsp_types::request::{
+    Completion, DocumentSymbolRequest, FoldingRangeRequest, Formatting, GotoDefinition,
+    HoverRequest, SemanticTokensFullRequest,
+};
 use lsp_types::{
-    DocumentSymbolResponse, GotoDefinitionResponse, InitializeParams, PublishDiagnosticsParams,
-    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
+    CompletionOptions, DocumentSymbolResponse, GotoDefinitionResponse, InitializeParams,
+    PublishDiagnosticsParams, SemanticTokensFullOptions, SemanticTokensOptions,
+    SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
+    TextDocumentSyncKind, Uri,
 };
 
+use crate::completion::completions;
 use crate::diagnostics::compute_diagnostics;
+use crate::folding::folding_ranges;
+use crate::formatting::format_document;
 use crate::hover::hover;
 use crate::navigation::{find_definition_by_text, goto_definition};
+use crate::semantic_tokens::semantic_tokens;
 use crate::symbols::document_symbols;
 use crate::workspace::Workspace;
 
@@ -62,6 +71,25 @@ pub fn capabilities() -> ServerCapabilities {
         definition_provider: Some(lsp_types::OneOf::Left(true)),
         hover_provider: Some(lsp_types::HoverProviderCapability::Simple(true)),
         document_symbol_provider: Some(lsp_types::OneOf::Left(true)),
+        completion_provider: Some(CompletionOptions {
+            trigger_characters: Some(vec![
+                ".".to_string(),
+                "#".to_string(),
+                "<".to_string(),
+                "\"".to_string(),
+            ]),
+            ..Default::default()
+        }),
+        semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
+            SemanticTokensOptions {
+                legend: crate::semantic_tokens::legend(),
+                full: Some(SemanticTokensFullOptions::Bool(true)),
+                range: None,
+                ..Default::default()
+            },
+        )),
+        folding_range_provider: Some(lsp_types::FoldingRangeProviderCapability::Simple(true)),
+        document_formatting_provider: Some(lsp_types::OneOf::Left(true)),
         ..Default::default()
     }
 }
@@ -112,6 +140,55 @@ fn handle_request(
         let symbols = document_symbols(workspace, &uri_str);
         let response = DocumentSymbolResponse::Nested(symbols);
         send_response(connection, id, Some(response))?;
+        return Ok(());
+    }
+
+    if let Ok((id, params)) = cast_request::<Completion>(req.clone()) {
+        let uri_str = params
+            .text_document_position
+            .text_document
+            .uri
+            .as_str()
+            .to_string();
+        let pos = params.text_document_position.position;
+        let items = completions(workspace, &uri_str, pos);
+        let response = lsp_types::CompletionResponse::Array(items);
+        send_response(connection, id, Some(response))?;
+        return Ok(());
+    }
+
+    if let Ok((id, params)) = cast_request::<SemanticTokensFullRequest>(req.clone()) {
+        let uri_str = params.text_document.uri.as_str().to_string();
+        let result = if let Some(source) = workspace.documents.get(&uri_str) {
+            let tokens = semantic_tokens(source);
+            Some(lsp_types::SemanticTokensResult::Tokens(
+                lsp_types::SemanticTokens {
+                    result_id: None,
+                    data: tokens,
+                },
+            ))
+        } else {
+            None
+        };
+        send_response(connection, id, result)?;
+        return Ok(());
+    }
+
+    if let Ok((id, params)) = cast_request::<FoldingRangeRequest>(req.clone()) {
+        let uri_str = params.text_document.uri.as_str().to_string();
+        let result = if let Some(source) = workspace.documents.get(&uri_str) {
+            Some(folding_ranges(source))
+        } else {
+            None
+        };
+        send_response(connection, id, result)?;
+        return Ok(());
+    }
+
+    if let Ok((id, params)) = cast_request::<Formatting>(req.clone()) {
+        let uri_str = params.text_document.uri.as_str().to_string();
+        let edits = format_document(workspace, &uri_str);
+        send_response(connection, id, Some(edits))?;
         return Ok(());
     }
 
@@ -209,8 +286,7 @@ fn cast_request<R: lsp_types::request::Request>(
 ) -> Result<(RequestId, R::Params), Request> {
     req.extract(R::METHOD).map_err(|e| match e {
         lsp_server::ExtractError::MethodMismatch(r) => r,
-        lsp_server::ExtractError::JsonError { method: _, error: _ } => {
-            // Shouldn't happen in practice; create a dummy request
+        lsp_server::ExtractError::JsonError { .. } => {
             panic!("JSON deserialization error in LSP request")
         }
     })
@@ -221,7 +297,7 @@ fn cast_notification<N: lsp_types::notification::Notification>(
 ) -> Result<N::Params, Notification> {
     not.extract(N::METHOD).map_err(|e| match e {
         lsp_server::ExtractError::MethodMismatch(n) => n,
-        lsp_server::ExtractError::JsonError { method: _, error: _ } => {
+        lsp_server::ExtractError::JsonError { .. } => {
             panic!("JSON deserialization error in LSP notification")
         }
     })

@@ -1,6 +1,10 @@
+mod completion;
 mod diagnostics;
+mod folding;
+mod formatting;
 mod hover;
 mod navigation;
+mod semantic_tokens;
 mod server;
 mod symbols;
 mod workspace;
