@@ -7,4 +7,5 @@ publish = false
 [dependencies]
 wgslpp-preprocess = { path = "../../crates/wgslpp-preprocess" }
 wgslpp-core = { path = "../../crates/wgslpp-core" }
+naga = { workspace = true }
 tempfile = "3"

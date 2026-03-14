@@ -1,0 +1,36 @@
+SingleUniformBinding
+---------- /out.wgsl ----------
+@group(0) @binding(0) var<uniform> uniforms:f32;fn a()->f32{return uniforms*2.0;}
+================================================================================
+MultipleUniformBindings
+---------- /out.wgsl ----------
+@group(0) @binding(0) var<uniform> modelMatrix:mat4x4f;@group(0) @binding(1) var<uniform> viewMatrix:mat4x4f;fn b(a:vec4f)->vec4f{return viewMatrix*modelMatrix*a;}
+================================================================================
+StorageBinding
+---------- /out.wgsl ----------
+@group(0) @binding(0) var<storage,read_write> data:array<f32>;fn b(a:u32)->f32{return data[a];}
+================================================================================
+MixedUniformStorage
+---------- /out.wgsl ----------
+@group(0) @binding(0) var<uniform> params:vec4f;@group(0) @binding(1) var<storage> buffer:array<f32>;fn b(a:u32)->f32{return buffer[a]*params.x;}
+================================================================================
+UniformWithTextures
+---------- /out.wgsl ----------
+@group(0) @binding(0) var<uniform> scale:f32;@group(0) @binding(1) var a:texture_2d<f32>;@group(0) @binding(2) var b:sampler;@fragment fn main(@location(0) c:vec2f)->@location(0) vec4f{return textureSample(a,b,c)*scale;}
+================================================================================
+UniformMultipleUses
+---------- /out.wgsl ----------
+@group(0) @binding(0) var<uniform> multiplier:f32;fn g(a:f32,b:f32,c:f32)->f32{let d=a*multiplier;let e=b*multiplier;let f=c*multiplier;return d+e+f;}
+================================================================================
+StructUniform
+---------- /out.wgsl ----------
+struct b{time:f32,resolution:vec2f}@group(0) @binding(0) var<uniform> u:b;fn c()->f32{return u.resolution.x/u.resolution.y;}fn d(a:vec2f)->vec2f{return a+vec2f(sin(u.time),cos(u.time));}
+================================================================================
+UnusedUniform
+---------- /out.wgsl ----------
+@group(0) @binding(0) var<uniform> unused:f32;fn a()->f32{return 1.0;}
+================================================================================
+LongBindingName
+---------- /out.wgsl ----------
+@group(0) @binding(0) var<uniform> veryLongUniformBindingName:f32;fn a()->f32{return veryLongUniformBindingName+veryLongUniformBindingName;}
+================================================================================
