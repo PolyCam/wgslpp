@@ -1,0 +1,118 @@
+{
+  "name": "wgslpp",
+  "displayName": "WGSL++",
+  "description": "WGSL language support with preprocessor, validation, and optimization",
+  "version": "0.1.0",
+  "publisher": "polycam",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Formatters",
+    "Snippets"
+  ],
+  "activationEvents": [
+    "onLanguage:wgsl"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "wgsl",
+        "aliases": [
+          "WGSL",
+          "wgsl"
+        ],
+        "extensions": [
+          ".wgsl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "wgsl",
+        "scopeName": "source.wgsl",
+        "path": "./syntaxes/wgslpp.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "wgsl",
+        "path": "./snippets/wgsl.json"
+      }
+    ],
+    "configuration": {
+      "title": "WGSL++",
+      "properties": {
+        "wgslpp.binary.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the wgslpp-lsp binary. If empty, searches PATH."
+        },
+        "wgslpp.includePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Additional include search paths."
+        },
+        "wgslpp.validateOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run validation on file save."
+        },
+        "wgslpp.validateOnType": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run validation as you type."
+        },
+        "wgslpp.diagnostics.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable diagnostics."
+        },
+        "wgslpp.inlayHints.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable inlay hints."
+        },
+        "wgslpp.format.indentSize": {
+          "type": "number",
+          "default": 4,
+          "description": "Number of spaces per indentation level for formatting."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "wgslpp.validate",
+        "title": "WGSL++: Validate Current File"
+      },
+      {
+        "command": "wgslpp.showPreprocessed",
+        "title": "WGSL++: Show Preprocessed Output"
+      },
+      {
+        "command": "wgslpp.restartServer",
+        "title": "WGSL++: Restart Language Server"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}

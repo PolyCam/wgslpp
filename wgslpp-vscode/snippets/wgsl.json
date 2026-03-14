@@ -1,0 +1,101 @@
+{
+  "Vertex Entry Point": {
+    "prefix": "@vertex",
+    "body": [
+      "@vertex",
+      "fn ${1:vs_main}(${2:@location(0) pos: vec3<f32>}) -> @builtin(position) vec4<f32> {",
+      "\treturn vec4<f32>(${2:pos}, 1.0);",
+      "}"
+    ],
+    "description": "Vertex shader entry point"
+  },
+  "Fragment Entry Point": {
+    "prefix": "@fragment",
+    "body": [
+      "@fragment",
+      "fn ${1:fs_main}(${2:@builtin(position) pos: vec4<f32>}) -> @location(0) vec4<f32> {",
+      "\treturn vec4<f32>(${3:1.0, 0.0, 0.0, 1.0});",
+      "}"
+    ],
+    "description": "Fragment shader entry point"
+  },
+  "Compute Entry Point": {
+    "prefix": "@compute",
+    "body": [
+      "@compute @workgroup_size(${1:64})",
+      "fn ${2:cs_main}(@builtin(global_invocation_id) id: vec3<u32>) {",
+      "\t$0",
+      "}"
+    ],
+    "description": "Compute shader entry point"
+  },
+  "Function": {
+    "prefix": "fn",
+    "body": [
+      "fn ${1:name}(${2:}) -> ${3:f32} {",
+      "\t${4:return ${5:0.0};}",
+      "}"
+    ],
+    "description": "Function definition"
+  },
+  "Struct": {
+    "prefix": "struct",
+    "body": [
+      "struct ${1:Name} {",
+      "\t${2:field}: ${3:f32},",
+      "};"
+    ],
+    "description": "Struct definition"
+  },
+  "Uniform Buffer": {
+    "prefix": "uniform",
+    "body": [
+      "@group(${1:0}) @binding(${2:0})",
+      "var<uniform> ${3:name}: ${4:Type};"
+    ],
+    "description": "Uniform buffer binding"
+  },
+  "Storage Buffer": {
+    "prefix": "storage",
+    "body": [
+      "@group(${1:0}) @binding(${2:0})",
+      "var<storage, ${3:read}> ${4:name}: ${5:Type};"
+    ],
+    "description": "Storage buffer binding"
+  },
+  "Texture Sampler Pair": {
+    "prefix": "texture",
+    "body": [
+      "@group(${1:0}) @binding(${2:0})",
+      "var ${3:t}: texture_2d<f32>;",
+      "@group(${1:0}) @binding(${4:1})",
+      "var ${5:s}: sampler;"
+    ],
+    "description": "Texture and sampler binding pair"
+  },
+  "ifdef Block": {
+    "prefix": "#ifdef",
+    "body": [
+      "#ifdef ${1:FLAG}",
+      "$0",
+      "#endif"
+    ],
+    "description": "Preprocessor ifdef block"
+  },
+  "ifndef Block": {
+    "prefix": "#ifndef",
+    "body": [
+      "#ifndef ${1:FLAG}",
+      "$0",
+      "#endif"
+    ],
+    "description": "Preprocessor ifndef block (include guard)"
+  },
+  "Include": {
+    "prefix": "#include",
+    "body": [
+      "#include \"${1:path.wgsl}\""
+    ],
+    "description": "Include directive"
+  }
+}
