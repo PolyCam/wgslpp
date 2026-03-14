@@ -69,6 +69,7 @@ pub fn preprocess(
         source_map: SourceMap::new(),
         output_lines: Vec::new(),
         include_stack: HashSet::new(),
+        pragma_once_files: HashSet::new(),
         // Convert simple defines to MacroDefs for macro expansion
         macro_defs: HashMap::new(),
         // Keep the simple defines map for conditional evaluation
@@ -106,6 +107,7 @@ pub fn preprocess_str(
         source_map: SourceMap::new(),
         output_lines: Vec::new(),
         include_stack: HashSet::new(),
+        pragma_once_files: HashSet::new(),
         macro_defs: HashMap::new(),
         defines: config.defines.clone(),
     };
@@ -130,12 +132,17 @@ struct PreprocessContext<'a> {
     source_map: SourceMap,
     output_lines: Vec<String>,
     include_stack: HashSet<PathBuf>,
+    pragma_once_files: HashSet<PathBuf>,
     macro_defs: HashMap<String, MacroDef>,
     defines: HashMap<String, String>,
 }
 
 impl<'a> PreprocessContext<'a> {
     fn process_file(&mut self, path: &Path) -> Result<(), PreprocessError> {
+        if self.pragma_once_files.contains(path) {
+            return Ok(());
+        }
+
         if self.include_stack.contains(path) {
             return Err(PreprocessError::CircularInclude {
                 path: path.to_path_buf(),
@@ -232,6 +239,14 @@ impl<'a> PreprocessContext<'a> {
                 // Remaining directives only processed when active
                 if !cond_stack.is_active() {
                     continue;
+                }
+
+                if let Some(rest) = strip_directive(directive, "pragma") {
+                    if rest.trim() == "once" {
+                        self.pragma_once_files.insert(file_path.to_path_buf());
+                        continue;
+                    }
+                    // Unknown pragma — fall through to emit as-is
                 }
 
                 if let Some(rest) = strip_directive(directive, "include") {
@@ -426,6 +441,82 @@ mod tests {
         let (f1, l1) = out.source_map.lookup(1).unwrap();
         assert_eq!(f1, Path::new("test.wgsl"));
         assert_eq!(l1, 5);
+    }
+
+    #[test]
+    fn test_pragma_once() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            temp_dir.path().join("header.wgsl"),
+            "#pragma once\nconst PI = 3.14;",
+        )
+        .unwrap();
+        std::fs::write(
+            temp_dir.path().join("main.wgsl"),
+            "#include \"header.wgsl\"\n#include \"header.wgsl\"\nlet x = PI;",
+        )
+        .unwrap();
+
+        let config = PreprocessConfig::default();
+        let result = preprocess(&temp_dir.path().join("main.wgsl"), &config).unwrap();
+        // PI should appear exactly once despite two includes
+        let pi_count = result.code.matches("const PI").count();
+        assert_eq!(pi_count, 1, "pragma once should prevent duplicate: {}", result.code);
+    }
+
+    #[test]
+    fn test_include_multiple_times_without_pragma_once() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            temp_dir.path().join("repeated.wgsl"),
+            "// no pragma once\nconst VAL = 1;",
+        )
+        .unwrap();
+        std::fs::write(
+            temp_dir.path().join("main.wgsl"),
+            "#include \"repeated.wgsl\"\n#include \"repeated.wgsl\"",
+        )
+        .unwrap();
+
+        let config = PreprocessConfig::default();
+        let result = preprocess(&temp_dir.path().join("main.wgsl"), &config).unwrap();
+        // Should appear twice — no pragma once
+        let val_count = result.code.matches("const VAL").count();
+        assert_eq!(val_count, 2, "without pragma once, include should repeat: {}", result.code);
+    }
+
+    #[test]
+    fn test_pragma_once_transitive() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            temp_dir.path().join("common.wgsl"),
+            "#pragma once\nconst COMMON = 1;",
+        )
+        .unwrap();
+        std::fs::write(
+            temp_dir.path().join("a.wgsl"),
+            "#include \"common.wgsl\"\nconst A = COMMON;",
+        )
+        .unwrap();
+        std::fs::write(
+            temp_dir.path().join("b.wgsl"),
+            "#include \"common.wgsl\"\nconst B = COMMON;",
+        )
+        .unwrap();
+        std::fs::write(
+            temp_dir.path().join("main.wgsl"),
+            "#include \"a.wgsl\"\n#include \"b.wgsl\"",
+        )
+        .unwrap();
+
+        let config = PreprocessConfig::default();
+        let result = preprocess(&temp_dir.path().join("main.wgsl"), &config).unwrap();
+        // common.wgsl included via a.wgsl and b.wgsl, but should appear only once
+        let count = result.code.matches("const COMMON").count();
+        assert_eq!(count, 1, "pragma once should work transitively: {}", result.code);
+        // But A and B should both appear
+        assert!(result.code.contains("const A"), "a.wgsl content should appear");
+        assert!(result.code.contains("const B"), "b.wgsl content should appear");
     }
 
     #[test]
