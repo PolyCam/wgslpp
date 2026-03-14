@@ -1,0 +1,48 @@
+<idea-plugin>
+    <id>com.polycam.wgslpp</id>
+    <name>WGSL++</name>
+    <vendor>Polycam</vendor>
+    <description><![CDATA[
+        WGSL language support with preprocessor, validation, and optimization.
+        Powered by the wgslpp-lsp language server.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.plugins.textmate</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- File type -->
+        <fileType
+                name="WGSL"
+                implementationClass="com.polycam.wgslpp.WgslFileType"
+                fieldName="INSTANCE"
+                language="WGSL"
+                extensions="wgsl"/>
+
+        <lang.parserDefinition
+                language="WGSL"
+                implementationClass="com.polycam.wgslpp.WgslParserDefinition"/>
+
+        <!-- LSP server support -->
+        <platform.lsp.serverSupportProvider
+                implementation="com.polycam.wgslpp.WgslppLspServerSupportProvider"/>
+
+        <!-- Settings UI -->
+        <applicationConfigurable
+                parentId="tools"
+                instance="com.polycam.wgslpp.WgslppSettingsConfigurable"
+                id="com.polycam.wgslpp.settings"
+                displayName="WGSL++"/>
+        <applicationService
+                serviceImplementation="com.polycam.wgslpp.WgslppSettings"/>
+
+        <!-- Live templates (snippets) -->
+        <defaultLiveTemplates file="/templates/wgsl.xml"/>
+        <liveTemplateContext
+                implementation="com.polycam.wgslpp.WgslTemplateContextType"/>
+
+        <!-- TextMate grammar for syntax highlighting -->
+        <textmate.bundleProvider
+                implementation="com.polycam.wgslpp.WgslTextMateBundleProvider"/>
+    </extensions>
+</idea-plugin>

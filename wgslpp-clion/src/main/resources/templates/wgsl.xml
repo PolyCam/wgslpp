@@ -1,0 +1,102 @@
+<templateSet group="WGSL">
+    <template name="@vertex"
+              value="@vertex&#10;fn $NAME$($PARAMS$) -> @builtin(position) vec4&lt;f32&gt; {&#10;    return vec4&lt;f32&gt;($BODY$);&#10;}"
+              description="Vertex shader entry point"
+              toReformat="false" toShortenFQNames="false">
+        <variable name="NAME" expression="" defaultValue="vs_main" alwaysStopAt="true"/>
+        <variable name="PARAMS" expression="" defaultValue="@location(0) pos: vec3&lt;f32&gt;" alwaysStopAt="true"/>
+        <variable name="BODY" expression="" defaultValue="pos, 1.0" alwaysStopAt="true"/>
+        <context><option name="WGSL" value="true"/></context>
+    </template>
+
+    <template name="@fragment"
+              value="@fragment&#10;fn $NAME$($PARAMS$) -> @location(0) vec4&lt;f32&gt; {&#10;    return vec4&lt;f32&gt;($BODY$);&#10;}"
+              description="Fragment shader entry point"
+              toReformat="false" toShortenFQNames="false">
+        <variable name="NAME" expression="" defaultValue="fs_main" alwaysStopAt="true"/>
+        <variable name="PARAMS" expression="" defaultValue="@builtin(position) pos: vec4&lt;f32&gt;" alwaysStopAt="true"/>
+        <variable name="BODY" expression="" defaultValue="1.0, 0.0, 0.0, 1.0" alwaysStopAt="true"/>
+        <context><option name="WGSL" value="true"/></context>
+    </template>
+
+    <template name="@compute"
+              value="@compute @workgroup_size($SIZE$)&#10;fn $NAME$(@builtin(global_invocation_id) id: vec3&lt;u32&gt;) {&#10;    $END$&#10;}"
+              description="Compute shader entry point"
+              toReformat="false" toShortenFQNames="false">
+        <variable name="SIZE" expression="" defaultValue="64" alwaysStopAt="true"/>
+        <variable name="NAME" expression="" defaultValue="cs_main" alwaysStopAt="true"/>
+        <context><option name="WGSL" value="true"/></context>
+    </template>
+
+    <template name="fn"
+              value="fn $NAME$($PARAMS$) -> $RET$ {&#10;    $BODY$&#10;}"
+              description="Function definition"
+              toReformat="false" toShortenFQNames="false">
+        <variable name="NAME" expression="" defaultValue="name" alwaysStopAt="true"/>
+        <variable name="PARAMS" expression="" defaultValue="" alwaysStopAt="true"/>
+        <variable name="RET" expression="" defaultValue="f32" alwaysStopAt="true"/>
+        <variable name="BODY" expression="" defaultValue="return 0.0;" alwaysStopAt="true"/>
+        <context><option name="WGSL" value="true"/></context>
+    </template>
+
+    <template name="struct"
+              value="struct $NAME$ {&#10;    $FIELD$: $TYPE$,&#10;}"
+              description="Struct definition"
+              toReformat="false" toShortenFQNames="false">
+        <variable name="NAME" expression="" defaultValue="Name" alwaysStopAt="true"/>
+        <variable name="FIELD" expression="" defaultValue="field" alwaysStopAt="true"/>
+        <variable name="TYPE" expression="" defaultValue="f32" alwaysStopAt="true"/>
+        <context><option name="WGSL" value="true"/></context>
+    </template>
+
+    <template name="uniform"
+              value="@group($GROUP$) @binding($BINDING$)&#10;var&lt;uniform&gt; $NAME$: $TYPE$;"
+              description="Uniform buffer binding"
+              toReformat="false" toShortenFQNames="false">
+        <variable name="GROUP" expression="" defaultValue="0" alwaysStopAt="true"/>
+        <variable name="BINDING" expression="" defaultValue="0" alwaysStopAt="true"/>
+        <variable name="NAME" expression="" defaultValue="name" alwaysStopAt="true"/>
+        <variable name="TYPE" expression="" defaultValue="Type" alwaysStopAt="true"/>
+        <context><option name="WGSL" value="true"/></context>
+    </template>
+
+    <template name="storage"
+              value="@group($GROUP$) @binding($BINDING$)&#10;var&lt;storage, $ACCESS$&gt; $NAME$: $TYPE$;"
+              description="Storage buffer binding"
+              toReformat="false" toShortenFQNames="false">
+        <variable name="GROUP" expression="" defaultValue="0" alwaysStopAt="true"/>
+        <variable name="BINDING" expression="" defaultValue="0" alwaysStopAt="true"/>
+        <variable name="ACCESS" expression="" defaultValue="read" alwaysStopAt="true"/>
+        <variable name="NAME" expression="" defaultValue="name" alwaysStopAt="true"/>
+        <variable name="TYPE" expression="" defaultValue="Type" alwaysStopAt="true"/>
+        <context><option name="WGSL" value="true"/></context>
+    </template>
+
+    <template name="texture"
+              value="@group($GROUP$) @binding($TBIND$)&#10;var $TEX$: texture_2d&lt;f32&gt;;&#10;@group($GROUP$) @binding($SBIND$)&#10;var $SAMP$: sampler;"
+              description="Texture and sampler binding pair"
+              toReformat="false" toShortenFQNames="false">
+        <variable name="GROUP" expression="" defaultValue="0" alwaysStopAt="true"/>
+        <variable name="TBIND" expression="" defaultValue="0" alwaysStopAt="true"/>
+        <variable name="TEX" expression="" defaultValue="t" alwaysStopAt="true"/>
+        <variable name="SBIND" expression="" defaultValue="1" alwaysStopAt="true"/>
+        <variable name="SAMP" expression="" defaultValue="s" alwaysStopAt="true"/>
+        <context><option name="WGSL" value="true"/></context>
+    </template>
+
+    <template name="#ifdef"
+              value="#ifdef $FLAG$&#10;$END$&#10;#endif"
+              description="Preprocessor ifdef block"
+              toReformat="false" toShortenFQNames="false">
+        <variable name="FLAG" expression="" defaultValue="FLAG" alwaysStopAt="true"/>
+        <context><option name="WGSL" value="true"/></context>
+    </template>
+
+    <template name="#include"
+              value="#include &quot;$PATH$&quot;"
+              description="Include directive"
+              toReformat="false" toShortenFQNames="false">
+        <variable name="PATH" expression="" defaultValue="path.wgsl" alwaysStopAt="true"/>
+        <context><option name="WGSL" value="true"/></context>
+    </template>
+</templateSet>
