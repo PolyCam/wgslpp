@@ -1,0 +1,10 @@
+[package]
+name = "wgslpp-integration-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+wgslpp-preprocess = { path = "../../crates/wgslpp-preprocess" }
+wgslpp-core = { path = "../../crates/wgslpp-core" }
+tempfile = "3"

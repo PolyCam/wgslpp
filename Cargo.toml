@@ -1,0 +1,15 @@
+[workspace]
+members = [
+    "crates/wgslpp-preprocess",
+    "crates/wgslpp-core",
+    "crates/wgslpp-cli",
+    "tests/integration",
+]
+resolver = "2"
+
+[workspace.dependencies]
+naga = { version = "28", features = ["wgsl-in", "wgsl-out"] }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"

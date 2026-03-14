@@ -1,0 +1,14 @@
+[package]
+name = "wgslpp-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "wgslpp"
+path = "src/main.rs"
+
+[dependencies]
+wgslpp-preprocess = { path = "../wgslpp-preprocess" }
+wgslpp-core = { path = "../wgslpp-core" }
+clap = { workspace = true }
+serde_json = { workspace = true }
