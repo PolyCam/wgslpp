@@ -59,6 +59,12 @@ enum Commands {
         /// Output file (default: stdout)
         #[arg(short, long)]
         output: Option<PathBuf>,
+        /// Enable dead code elimination
+        #[arg(long)]
+        dce: bool,
+        /// Enable frequency-based identifier renaming
+        #[arg(long)]
+        rename: bool,
     },
     /// All-in-one build pipeline: preprocess + validate + reflect + minify
     Pipeline {
@@ -85,6 +91,12 @@ enum Commands {
         /// Skip minification
         #[arg(long = "no-minify")]
         no_minify: bool,
+        /// Enable dead code elimination
+        #[arg(long)]
+        dce: bool,
+        /// Enable frequency-based identifier renaming
+        #[arg(long)]
+        rename: bool,
     },
 }
 
@@ -139,7 +151,12 @@ fn main() {
             format,
         } => cmd_validate::run(input, source_map, format),
         Commands::Reflect { input, output } => cmd_reflect::run(input, output),
-        Commands::Minify { input, output } => cmd_minify::run(input, output),
+        Commands::Minify {
+            input,
+            output,
+            dce,
+            rename,
+        } => cmd_minify::run(input, output, dce, rename),
         Commands::Pipeline {
             input,
             packages,
@@ -149,15 +166,11 @@ fn main() {
             source_map,
             no_validate,
             no_minify,
+            dce,
+            rename,
         } => cmd_pipeline::run(
-            input,
-            packages,
-            defines,
-            output,
-            reflect,
-            source_map,
-            no_validate,
-            no_minify,
+            input, packages, defines, output, reflect, source_map, no_validate, no_minify, dce,
+            rename,
         ),
     };
 

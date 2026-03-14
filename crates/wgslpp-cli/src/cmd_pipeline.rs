@@ -1,6 +1,8 @@
 use std::path::PathBuf;
+use wgslpp_core::dce::eliminate_dead_code;
 use wgslpp_core::minify::minify;
 use wgslpp_core::reflect::reflect;
+use wgslpp_core::rename::rename_identifiers;
 use wgslpp_core::validate::validate;
 use wgslpp_preprocess::packages::PackageRegistry;
 use wgslpp_preprocess::{preprocess, PreprocessConfig};
@@ -14,6 +16,8 @@ pub fn run(
     source_map_path: Option<PathBuf>,
     no_validate: bool,
     no_minify: bool,
+    dce: bool,
+    rename: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Preprocess
     let mut registry = PackageRegistry::new();
@@ -50,28 +54,37 @@ pub fn run(
         }
     }
 
-    // 3. Reflect (if requested)
-    if let Some(ref_path) = reflect_path {
+    // 3. Reflect (if requested — before optimization so names are original)
+    if let Some(ref_path) = &reflect_path {
         if let (Some(module), Some(module_info)) =
             (&validation_result.module, &validation_result.module_info)
         {
             let reflection = reflect(module, module_info);
             let json = serde_json::to_string_pretty(&reflection)?;
-            std::fs::write(&ref_path, json)?;
+            std::fs::write(ref_path, json)?;
         } else if !no_validate {
             return Err("cannot reflect: validation failed".into());
         }
     }
 
-    // 4. Output (optionally minified)
+    // 4. Optimize + Output
     let final_code = if !no_minify {
-        if let (Some(module), Some(module_info)) =
-            (&validation_result.module, &validation_result.module_info)
+        if let (Some(mut module), Some(module_info)) =
+            (validation_result.module, validation_result.module_info)
         {
-            match minify(module, module_info) {
+            if dce {
+                eliminate_dead_code(&mut module);
+            }
+            if rename {
+                rename_identifiers(&mut module);
+            }
+            match minify(&module, &module_info) {
                 Ok(minified) => minified,
                 Err(e) => {
-                    eprintln!("warning: minification failed ({}), using preprocessed output", e);
+                    eprintln!(
+                        "warning: minification failed ({}), using preprocessed output",
+                        e
+                    );
                     pp_result.code
                 }
             }

@@ -1,0 +1,19 @@
+[package]
+name = "wgslpp-lsp"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "wgslpp-lsp"
+path = "src/main.rs"
+
+[dependencies]
+wgslpp-preprocess = { path = "../wgslpp-preprocess" }
+wgslpp-core = { path = "../wgslpp-core" }
+naga = { workspace = true }
+lsp-server = "0.7"
+lsp-types = "0.97"
+serde = { workspace = true }
+serde_json = { workspace = true }
+log = "0.4"
+env_logger = "0.11"

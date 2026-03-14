@@ -3,6 +3,7 @@ members = [
     "crates/wgslpp-preprocess",
     "crates/wgslpp-core",
     "crates/wgslpp-cli",
+    "crates/wgslpp-lsp",
     "tests/integration",
 ]
 resolver = "2"
