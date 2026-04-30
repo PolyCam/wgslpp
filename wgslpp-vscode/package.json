@@ -2,7 +2,7 @@
   "name": "wgslpp",
   "displayName": "WGSL++",
   "description": "WGSL language support with preprocessor, validation, and optimization",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "PolyCam",
   "license": "MIT",
   "icon": "icon.png",

@@ -178,22 +178,14 @@ jobs:
         run: ( cd npm/cli && npm publish --access public --provenance )
 
   vscode:
-    name: Build VS Code extension (${{ matrix.vsce_target }})
+    name: Build VS Code extension
     needs: [check-version, build]
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - artifact: bin-x86_64-unknown-linux-gnu
-            vsce_target: linux-x64
-            lsp_exe: wgslpp-lsp
-          - artifact: bin-aarch64-apple-darwin
-            vsce_target: darwin-arm64
-            lsp_exe: wgslpp-lsp
-          - artifact: bin-x86_64-pc-windows-msvc
-            vsce_target: win32-x64
-            lsp_exe: wgslpp-lsp.exe
+    # Single platform-agnostic .vsix. We bundle every supported platform's
+    # wgslpp-lsp binary into `bin/<platform>-<arch>/`, and extension.ts
+    # picks the right one at activation. Trades ~7 MB of unused binaries
+    # for a single artifact that uploads cleanly via the marketplace web
+    # UI and works on every host without per-target publishing.
     steps:
       - uses: actions/checkout@v4
 
@@ -203,14 +195,15 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
           path: artifacts/
 
-      - name: Stage LSP binary inside extension
+      - name: Stage all platform LSP binaries inside the extension
         run: |
           set -euo pipefail
-          mkdir -p wgslpp-vscode/bin
-          install -m 0755 "artifacts/${{ matrix.lsp_exe }}" "wgslpp-vscode/bin/${{ matrix.lsp_exe }}"
+          mkdir -p wgslpp-vscode/bin/{darwin-arm64,linux-x64,win32-x64}
+          install -m 0755 artifacts/bin-aarch64-apple-darwin/wgslpp-lsp        wgslpp-vscode/bin/darwin-arm64/wgslpp-lsp
+          install -m 0755 artifacts/bin-x86_64-unknown-linux-gnu/wgslpp-lsp    wgslpp-vscode/bin/linux-x64/wgslpp-lsp
+          install -m 0755 artifacts/bin-x86_64-pc-windows-msvc/wgslpp-lsp.exe  wgslpp-vscode/bin/win32-x64/wgslpp-lsp.exe
 
       - name: Stamp extension version
         env:
@@ -236,12 +229,12 @@ jobs:
           # `yarn list --prod --json` — a Yarn 1 command that Yarn 4
           # doesn't ship. Our `yarn install` has already populated
           # node_modules, so vsce just bundles what's there.
-          npx --yes @vscode/vsce package --no-dependencies --target ${{ matrix.vsce_target }} -o "../wgslpp-${{ matrix.vsce_target }}.vsix"
+          npx --yes @vscode/vsce package --no-dependencies -o "../wgslpp.vsix"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: vsix-${{ matrix.vsce_target }}
-          path: wgslpp-${{ matrix.vsce_target }}.vsix
+          name: vsix
+          path: wgslpp.vsix
           retention-days: 7
 
       # Uncomment once you're ready to push to the marketplace from CI.
@@ -251,7 +244,7 @@ jobs:
       #   working-directory: wgslpp-vscode
       #   env:
       #     VSCE_PAT: ${{ secrets.VSCE_PAT }}
-      #   run: npx --yes @vscode/vsce publish --no-dependencies --packagePath "../wgslpp-${{ matrix.vsce_target }}.vsix"
+      #   run: npx --yes @vscode/vsce publish --no-dependencies --packagePath "../wgslpp.vsix"
 
   release:
     name: Create GitHub Release
@@ -271,7 +264,8 @@ jobs:
             target="${d##*/bin-}"
             ( cd "$d" && tar czf "../../out/wgslpp-$target.tar.gz" -- * )
           done
-          cp artifacts/vsix-*/wgslpp-*.vsix out/
+          # Single platform-agnostic .vsix
+          cp artifacts/vsix/wgslpp.vsix out/
 
       - uses: softprops/action-gh-release@v2
         with:

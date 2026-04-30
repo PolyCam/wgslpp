@@ -70,6 +70,13 @@ export function deactivate(): Thenable<void> | undefined {
     return client?.stop();
 }
 
+/** Map process.platform/process.arch to the bundled-binary subdir name. */
+const TARGET_DIRS: Record<string, string> = {
+    'darwin-arm64': 'darwin-arm64',
+    'linux-x64': 'linux-x64',
+    'win32-x64': 'win32-x64',
+};
+
 function getServerPath(): string | undefined {
     const config = vscode.workspace.getConfiguration('wgslpp');
     const configPath = config.get<string>('binary.path');
@@ -78,24 +85,25 @@ function getServerPath(): string | undefined {
         return configPath;
     }
 
-    // Marketplace builds bundle the LSP binary inside the extension under
-    // `bin/`. The exact filename includes the platform suffix because vsce
-    // packages a separate .vsix per target — see the release workflow.
     const exe = process.platform === 'win32' ? 'wgslpp-lsp.exe' : 'wgslpp-lsp';
-    const candidates = [
-        // Bundled with the published extension.
-        path.join(__dirname, '..', 'bin', exe),
-        // Local dev: `cargo build [--release] -p wgslpp-lsp` from the repo root.
-        path.join(__dirname, '..', '..', 'target', 'release', exe),
-        path.join(__dirname, '..', '..', 'target', 'debug', exe),
-        // Last resort: PATH lookup (e.g. for users that built and installed
-        // wgslpp-lsp manually).
-        'wgslpp-lsp',
-    ];
+    const targetDir = TARGET_DIRS[`${process.platform}-${process.arch}`];
+
+    // Marketplace builds bundle every supported platform's LSP binary inside
+    // the extension under `bin/<platform>-<arch>/`, so a single .vsix works
+    // everywhere we support without forcing platform-specific publishing
+    // (which would require multiple uploads to the marketplace web UI).
+    const candidates: string[] = [];
+    if (targetDir) {
+        candidates.push(path.join(__dirname, '..', 'bin', targetDir, exe));
+    }
+    // Local dev: `cargo build [--release] -p wgslpp-lsp` from the repo root.
+    candidates.push(path.join(__dirname, '..', '..', 'target', 'release', exe));
+    candidates.push(path.join(__dirname, '..', '..', 'target', 'debug', exe));
+    // Last resort: PATH lookup (e.g. for users that built and installed
+    // wgslpp-lsp manually, or are on an unsupported platform).
+    candidates.push('wgslpp-lsp');
 
     for (const candidate of candidates) {
-        // For absolute paths, only use them if the file exists; for the bare
-        // command name we always fall through and let spawn handle the lookup.
         if (path.isAbsolute(candidate)) {
             try {
                 require('fs').accessSync(candidate);
