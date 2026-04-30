@@ -95,17 +95,17 @@ This is the primary build integration point — a single invocation replaces sep
 
 ### Expression Grammar
 
-`#if` and `#elif` support a C-like expression language:
+`#if` and `#elif` support a C-like expression language. Numbers can be decimal or hexadecimal (`0x1F`). Identifiers are recursively resolved through macro definitions (e.g. `BRDF_SPECULAR_D` → `SPECULAR_D_GGX` → `0`).
 
 ```
 expr       = or_expr
 or_expr    = and_expr ("||" and_expr)*
 and_expr   = bitor_expr ("&&" bitor_expr)*
 bitor_expr = cmp_expr ("|" cmp_expr)*
-cmp_expr   = bitand_expr (("==" | "!=") bitand_expr)?
+cmp_expr   = bitand_expr (("==" | "!=" | "<" | ">" | "<=" | ">=") bitand_expr)?
 bitand_expr = unary_expr ("&" unary_expr)*
 unary_expr = "!" unary_expr | primary
-primary    = "defined" "(" IDENT ")" | "(" expr ")" | NUMBER | IDENT
+primary    = "defined" "(" IDENT ")" | "(" expr ")" | NUMBER | HEX | IDENT
 ```
 
 ### Package-Scoped Includes
@@ -132,7 +132,12 @@ Then in WGSL:
 ```json
 {
   "bindings": [
-    { "group": 0, "binding": 0, "name": "uniforms", "type": "uniform" }
+    { "group": 0, "binding": 0, "name": "frameUniforms", "type": "uniform", "wgsl_type": "uniform" },
+    { "group": 0, "binding": 3, "name": "froxelRecordUniforms", "type": "storage", "wgsl_type": "storage_read" },
+    { "group": 0, "binding": 10, "name": "structure_image", "type": "texture", "wgsl_type": "texture_2d<f32>" },
+    { "group": 0, "binding": 11, "name": "structure_sampler", "type": "sampler", "wgsl_type": "sampler" },
+    { "group": 0, "binding": 12, "name": "shadowMap_image", "type": "texture", "wgsl_type": "texture_depth_2d_array" },
+    { "group": 0, "binding": 13, "name": "shadowMap_sampler", "type": "sampler", "wgsl_type": "sampler_comparison" }
   ],
   "structs": [
     {
@@ -152,7 +157,16 @@ Then in WGSL:
 }
 ```
 
-Binding types: `uniform`, `storage`, `storage_rw`, `sampler`, `texture`, `handle`.
+**`type`** — category: `uniform`, `storage`, `storage_rw`, `sampler`, `texture`, `handle`.
+
+**`wgsl_type`** — full WGSL type for `BindGroupLayoutEntry` generation:
+
+| Category | `wgsl_type` values |
+|----------|--------------------|
+| Buffers | `uniform`, `storage_read`, `storage_read_write` |
+| Textures | `texture_2d<f32>`, `texture_2d<i32>`, `texture_2d<u32>`, `texture_cube<f32>`, `texture_2d_array<f32>`, `texture_3d<f32>`, `texture_multisampled_2d<f32>`, `texture_depth_2d`, `texture_depth_2d_array`, `texture_depth_cube`, `texture_storage_2d<FORMAT, ACCESS>`, etc. |
+| Samplers | `sampler`, `sampler_comparison` |
+
 Stages: `vertex`, `fragment`, `compute`, `task`, `mesh`.
 
 ## Optimization
@@ -278,9 +292,9 @@ wgslpp/
 cargo test
 ```
 
-86 tests across the workspace:
-- 35 preprocessor unit tests (conditionals, macros, includes, `#pragma once`, expression evaluator)
-- 7 core unit tests (DCE, renaming, short name generation, keyword safety)
+111 tests across the workspace:
+- 49 preprocessor unit tests (conditionals, macros, includes, `#pragma once`, expression evaluator, UTF-8 safety, comparison operators, recursive define resolution)
+- 18 core unit tests (DCE, renaming, short name generation, keyword safety, reflection `wgsl_type` for all binding kinds)
 - 10 integration pipeline tests
 - 34 imported miniray tests (validation of 65 WGSL files, DCE behavior, sample roundtripping, reflection preservation)
 

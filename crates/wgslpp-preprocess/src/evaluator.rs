@@ -8,7 +8,7 @@ use std::collections::HashMap;
 /// or_expr    = and_expr ("||" and_expr)*
 /// and_expr   = bitor_expr ("&&" bitor_expr)*
 /// bitor_expr = cmp_expr ("|" cmp_expr)*
-/// cmp_expr   = bitand_expr (("==" | "!=") bitand_expr)?
+/// cmp_expr   = bitand_expr (("==" | "!=" | "<" | ">" | "<=" | ">=") bitand_expr)?
 /// bitand_expr = unary_expr ("&" unary_expr)*
 /// unary_expr = "!" unary_expr | primary
 /// primary    = "defined" "(" IDENT ")" | "(" expr ")" | NUMBER | IDENT
@@ -43,6 +43,10 @@ enum Token {
     BitOr,
     Eq,
     Ne,
+    Lt,
+    Gt,
+    Le,
+    Ge,
 }
 
 impl std::fmt::Display for Token {
@@ -59,6 +63,10 @@ impl std::fmt::Display for Token {
             Token::BitOr => write!(f, "|"),
             Token::Eq => write!(f, "=="),
             Token::Ne => write!(f, "!="),
+            Token::Lt => write!(f, "<"),
+            Token::Gt => write!(f, ">"),
+            Token::Le => write!(f, "<="),
+            Token::Ge => write!(f, ">="),
         }
     }
 }
@@ -106,15 +114,44 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
                 tokens.push(Token::Eq);
                 i += 2;
             }
+            '<' if i + 1 < chars.len() && chars[i + 1] == '=' => {
+                tokens.push(Token::Le);
+                i += 2;
+            }
+            '<' => {
+                tokens.push(Token::Lt);
+                i += 1;
+            }
+            '>' if i + 1 < chars.len() && chars[i + 1] == '=' => {
+                tokens.push(Token::Ge);
+                i += 2;
+            }
+            '>' => {
+                tokens.push(Token::Gt);
+                i += 1;
+            }
             c if c.is_ascii_digit() => {
                 let start = i;
-                while i < chars.len() && chars[i].is_ascii_digit() {
-                    i += 1;
+                if c == '0' && i + 1 < chars.len() && (chars[i + 1] == 'x' || chars[i + 1] == 'X')
+                {
+                    // Hex literal: 0x...
+                    i += 2;
+                    while i < chars.len() && chars[i].is_ascii_hexdigit() {
+                        i += 1;
+                    }
+                    let hex_str = &input[start + 2..i];
+                    let num = i64::from_str_radix(hex_str, 16)
+                        .map_err(|e| format!("invalid hex number: {}", e))?;
+                    tokens.push(Token::Number(num));
+                } else {
+                    while i < chars.len() && chars[i].is_ascii_digit() {
+                        i += 1;
+                    }
+                    let num: i64 = input[start..i]
+                        .parse()
+                        .map_err(|e| format!("invalid number: {}", e))?;
+                    tokens.push(Token::Number(num));
                 }
-                let num: i64 = input[start..i]
-                    .parse()
-                    .map_err(|e| format!("invalid number: {}", e))?;
-                tokens.push(Token::Number(num));
             }
             c if c.is_ascii_alphabetic() || c == '_' => {
                 let start = i;
@@ -203,6 +240,26 @@ impl<'a> Parser<'a> {
                 let rhs = self.bitand_expr()?;
                 Ok(if val != rhs { 1 } else { 0 })
             }
+            Some(&Token::Lt) => {
+                self.advance();
+                let rhs = self.bitand_expr()?;
+                Ok(if val < rhs { 1 } else { 0 })
+            }
+            Some(&Token::Gt) => {
+                self.advance();
+                let rhs = self.bitand_expr()?;
+                Ok(if val > rhs { 1 } else { 0 })
+            }
+            Some(&Token::Le) => {
+                self.advance();
+                let rhs = self.bitand_expr()?;
+                Ok(if val <= rhs { 1 } else { 0 })
+            }
+            Some(&Token::Ge) => {
+                self.advance();
+                let rhs = self.bitand_expr()?;
+                Ok(if val >= rhs { 1 } else { 0 })
+            }
             _ => Ok(val),
         }
     }
@@ -249,14 +306,20 @@ impl<'a> Parser<'a> {
                 }
             }
             Some(Token::Ident(name)) => {
-                // Look up as a define; undefined identifiers are 0
-                match self.defines.get(&name) {
-                    Some(val) if val.is_empty() => Ok(1), // flag define
-                    Some(val) => val
-                        .parse::<i64>()
-                        .map_err(|_| format!("define '{}' has non-integer value '{}'", name, val)),
-                    None => Ok(0),
+                // Look up as a define; undefined identifiers are 0.
+                // Recursively resolve through macro chains (e.g. A -> B -> 42).
+                let mut current = name.clone();
+                for _ in 0..100 {
+                    match self.defines.get(&current) {
+                        Some(val) if val.is_empty() => return Ok(1), // flag define
+                        Some(val) => match val.parse::<i64>() {
+                            Ok(n) => return Ok(n),
+                            Err(_) => current = val.clone(), // resolve indirection
+                        },
+                        None => return Ok(0), // undefined = 0
+                    }
                 }
+                Err(format!("circular define resolution for '{}'", name))
             }
             Some(tok) => Err(format!("unexpected token '{}' in expression", tok)),
             None => Err("unexpected end of expression".into()),
@@ -318,5 +381,88 @@ mod tests {
         let d = defs(&[("A", ""), ("V", "2")]);
         assert!(evaluate("defined(A) && (V == 2 || V == 3)", &d).unwrap());
         assert!(!evaluate("defined(A) && (V == 1 || V == 3)", &d).unwrap());
+    }
+
+    #[test]
+    fn test_hex_literals() {
+        let d = defs(&[("X", "6")]);
+        assert!(evaluate("X & 0x02", &d).unwrap());
+        assert!(!evaluate("X & 0x01", &d).unwrap());
+        assert!(evaluate("0xFF == 255", &d).unwrap());
+        assert!(evaluate("0x0A != 0x0B", &d).unwrap());
+    }
+
+    #[test]
+    fn test_less_than() {
+        let d = defs(&[("QUALITY", "1"), ("HIGH", "2")]);
+        assert!(evaluate("QUALITY < HIGH", &d).unwrap());
+        assert!(!evaluate("HIGH < QUALITY", &d).unwrap());
+        assert!(!evaluate("QUALITY < QUALITY", &d).unwrap());
+    }
+
+    #[test]
+    fn test_greater_than() {
+        let d = defs(&[("A", "5"), ("B", "3")]);
+        assert!(evaluate("A > B", &d).unwrap());
+        assert!(!evaluate("B > A", &d).unwrap());
+        assert!(!evaluate("A > A", &d).unwrap());
+    }
+
+    #[test]
+    fn test_less_equal() {
+        let d = defs(&[("X", "3")]);
+        assert!(evaluate("X <= 3", &d).unwrap());
+        assert!(evaluate("X <= 4", &d).unwrap());
+        assert!(!evaluate("X <= 2", &d).unwrap());
+    }
+
+    #[test]
+    fn test_greater_equal() {
+        let d = defs(&[("X", "3")]);
+        assert!(evaluate("X >= 3", &d).unwrap());
+        assert!(evaluate("X >= 2", &d).unwrap());
+        assert!(!evaluate("X >= 4", &d).unwrap());
+    }
+
+    #[test]
+    fn test_comparison_with_hex() {
+        // Mirrors real shader pattern: FILAMENT_QUALITY < FILAMENT_QUALITY_HIGH
+        let d = defs(&[("FILAMENT_QUALITY", "0"), ("FILAMENT_QUALITY_HIGH", "1")]);
+        assert!(evaluate("FILAMENT_QUALITY < FILAMENT_QUALITY_HIGH", &d).unwrap());
+        assert!(!evaluate("FILAMENT_QUALITY >= FILAMENT_QUALITY_HIGH", &d).unwrap());
+    }
+
+    #[test]
+    fn test_recursive_define_resolution() {
+        // BRDF_SPECULAR_D -> SPECULAR_D_GGX -> 0
+        let d = defs(&[
+            ("SPECULAR_D_GGX", "0"),
+            ("SPECULAR_D_BECKMANN", "1"),
+            ("BRDF_SPECULAR_D", "SPECULAR_D_GGX"),
+        ]);
+        assert!(evaluate("BRDF_SPECULAR_D == SPECULAR_D_GGX", &d).unwrap());
+        assert!(evaluate("BRDF_SPECULAR_D == 0", &d).unwrap());
+        assert!(!evaluate("BRDF_SPECULAR_D == SPECULAR_D_BECKMANN", &d).unwrap());
+    }
+
+    #[test]
+    fn test_recursive_define_three_levels() {
+        // A -> B -> C -> 42
+        let d = defs(&[("C", "42"), ("B", "C"), ("A", "B")]);
+        assert!(evaluate("A == 42", &d).unwrap());
+    }
+
+    #[test]
+    fn test_recursive_define_flag() {
+        // A -> B where B is a flag (empty value)
+        let d = defs(&[("B", ""), ("A", "B")]);
+        assert!(evaluate("A", &d).unwrap()); // resolves to flag = 1
+    }
+
+    #[test]
+    fn test_recursive_define_undefined_end() {
+        // A -> B where B is not defined => 0
+        let d = defs(&[("A", "NONEXISTENT")]);
+        assert!(!evaluate("A", &d).unwrap());
     }
 }

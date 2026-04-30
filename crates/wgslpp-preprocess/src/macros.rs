@@ -96,23 +96,38 @@ pub fn expand_macros(line: &str, defines: &HashMap<String, MacroDef>) -> String 
 }
 
 /// Replace whole-word occurrences of `name` with `replacement`.
+/// Handles multi-byte UTF-8 safely (macro names are always ASCII).
 fn replace_word(input: &str, name: &str, replacement: &str) -> Option<String> {
     let mut result = String::new();
     let mut found = false;
     let mut i = 0;
     let bytes = input.as_bytes();
+    let name_bytes = name.as_bytes();
 
     while i < bytes.len() {
-        if i + name.len() <= bytes.len() && &input[i..i + name.len()] == name {
+        // Non-ASCII byte: skip the entire multi-byte character
+        if bytes[i] >= 0x80 {
+            let start = i;
+            i += 1;
+            while i < bytes.len() && (bytes[i] & 0xC0) == 0x80 {
+                i += 1;
+            }
+            result.push_str(&input[start..i]);
+            continue;
+        }
+
+        if i + name_bytes.len() <= bytes.len()
+            && bytes[i..i + name_bytes.len()] == *name_bytes
+        {
             // Check word boundaries
-            let before_ok =
-                i == 0 || !(bytes[i - 1] as char).is_ascii_alphanumeric() && bytes[i - 1] != b'_';
-            let after_ok = i + name.len() == bytes.len()
-                || !(bytes[i + name.len()] as char).is_ascii_alphanumeric()
-                    && bytes[i + name.len()] != b'_';
+            let before_ok = i == 0
+                || !(bytes[i - 1]).is_ascii_alphanumeric() && bytes[i - 1] != b'_';
+            let after_idx = i + name_bytes.len();
+            let after_ok = after_idx == bytes.len()
+                || !bytes[after_idx].is_ascii_alphanumeric() && bytes[after_idx] != b'_';
             if before_ok && after_ok {
                 result.push_str(replacement);
-                i += name.len();
+                i += name_bytes.len();
                 found = true;
                 continue;
             }
@@ -278,5 +293,40 @@ mod tests {
         // Should not replace A inside ALPHA
         let result = expand_macros("let ALPHA = A;", &defs);
         assert_eq!(result, "let ALPHA = 1;");
+    }
+
+    #[test]
+    fn test_unicode_in_comments() {
+        // Box-drawing characters (3-byte UTF-8) must not cause panics
+        let mut defs = HashMap::new();
+        defs.insert("FOO".to_string(), MacroDef::Object("bar".to_string()));
+        let result = expand_macros("// ── Section ─────────────────", &defs);
+        assert_eq!(result, "// ── Section ─────────────────");
+    }
+
+    #[test]
+    fn test_macro_replacement_near_unicode() {
+        // Macro appears right after multi-byte characters
+        let mut defs = HashMap::new();
+        defs.insert("X".to_string(), MacroDef::Object("42".to_string()));
+        let result = expand_macros("// ── X", &defs);
+        assert_eq!(result, "// ── 42");
+    }
+
+    #[test]
+    fn test_macro_replacement_between_unicode() {
+        let mut defs = HashMap::new();
+        defs.insert("VAL".to_string(), MacroDef::Object("99".to_string()));
+        let result = expand_macros("«VAL»", &defs);
+        assert_eq!(result, "«99»");
+    }
+
+    #[test]
+    fn test_unicode_no_false_word_boundary() {
+        // Emoji and CJK characters adjacent to identifiers
+        let mut defs = HashMap::new();
+        defs.insert("A".to_string(), MacroDef::Object("1".to_string()));
+        let result = expand_macros("let 日本 = A;", &defs);
+        assert_eq!(result, "let 日本 = 1;");
     }
 }

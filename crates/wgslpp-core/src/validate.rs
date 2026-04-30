@@ -35,7 +35,13 @@ pub struct ValidationResult {
 /// Parse and validate WGSL source code.
 /// Uses the source map to remap error locations to original file positions.
 pub fn validate(source: &str, source_map: Option<&SourceMap>) -> ValidationResult {
-    let module = match wgsl::parse_str(source) {
+    // Parse with `parse_doc_comments: true` so `module.doc_comments` is
+    // populated. Reflection reads marker comments (`/// @unfilterable` etc.)
+    // off this map rather than re-scanning the source.
+    let mut frontend = wgsl::Frontend::new_with_options(wgsl::Options {
+        parse_doc_comments: true,
+    });
+    let module = match frontend.parse(source) {
         Ok(module) => module,
         Err(parse_error) => {
             let diagnostics = parse_error_to_diagnostics(&parse_error, source, source_map);

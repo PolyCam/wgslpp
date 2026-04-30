@@ -163,6 +163,70 @@ fn lookup_symbol(module: &naga::Module, name: &str) -> Option<String> {
         }
     }
 
+    // Function arguments and local variables. Walk every regular function and
+    // every entry point. Naga IR has lost the surrounding scope by the time we
+    // see it, so on a name collision we return whichever function we hit
+    // first — go-to-definition still resolves to the correct text location.
+    for (_, func) in module.functions.iter() {
+        if let Some(s) = lookup_in_function(module, &func.arguments, &func.local_variables, name) {
+            let owner = func.name.as_deref().unwrap_or("?");
+            return Some(format!("{}\n\nin `fn {}`", s, owner));
+        }
+    }
+    for ep in &module.entry_points {
+        if let Some(s) = lookup_in_function(
+            module,
+            &ep.function.arguments,
+            &ep.function.local_variables,
+            name,
+        ) {
+            let stage = match ep.stage {
+                naga::ShaderStage::Vertex => "vertex",
+                naga::ShaderStage::Fragment => "fragment",
+                naga::ShaderStage::Compute => "compute",
+                _ => "entry",
+            };
+            return Some(format!("{}\n\nin `@{} fn {}`", s, stage, ep.name));
+        }
+    }
+
+    // Struct members — disambiguate which struct in the detail.
+    for (_, ty) in module.types.iter() {
+        if let naga::TypeInner::Struct { ref members, .. } = ty.inner {
+            for member in members {
+                if member.name.as_deref() == Some(name) {
+                    let ty_str = type_name(&module.types, &member.ty);
+                    let struct_name = ty.name.as_deref().unwrap_or("?");
+                    return Some(format!(
+                        "```wgsl\n{}: {}\n```\n\nfield of `struct {}` (offset {})",
+                        name, ty_str, struct_name, member.offset
+                    ));
+                }
+            }
+        }
+    }
+
+    None
+}
+
+fn lookup_in_function(
+    module: &naga::Module,
+    arguments: &[naga::FunctionArgument],
+    locals: &naga::Arena<naga::LocalVariable>,
+    name: &str,
+) -> Option<String> {
+    for arg in arguments {
+        if arg.name.as_deref() == Some(name) {
+            let ty = type_name(&module.types, &arg.ty);
+            return Some(format!("```wgsl\n{}: {}  // parameter\n```", name, ty));
+        }
+    }
+    for (_, lv) in locals.iter() {
+        if lv.name.as_deref() == Some(name) {
+            let ty = type_name(&module.types, &lv.ty);
+            return Some(format!("```wgsl\nvar {}: {}  // local\n```", name, ty));
+        }
+    }
     None
 }
 

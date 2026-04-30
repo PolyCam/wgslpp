@@ -3,31 +3,9 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use wgslpp_preprocess::config::{ConfigurationDef, WgslppConfig};
 use wgslpp_preprocess::packages::PackageRegistry;
 use wgslpp_preprocess::source_map::SourceMap;
-
-/// Configuration loaded from wgslpp.json.
-#[derive(Debug, Clone, Default, serde::Deserialize)]
-pub struct WorkspaceConfig {
-    #[serde(default)]
-    pub packages: Vec<PackageConfig>,
-    #[serde(default, rename = "manifestDir")]
-    pub manifest_dir: Option<String>,
-    #[serde(default)]
-    pub configurations: HashMap<String, ConfigurationDef>,
-}
-
-#[derive(Debug, Clone, serde::Deserialize)]
-pub struct PackageConfig {
-    pub name: String,
-    pub path: String,
-}
-
-#[derive(Debug, Clone, Default, serde::Deserialize)]
-pub struct ConfigurationDef {
-    #[serde(default)]
-    pub defines: HashMap<String, String>,
-}
 
 /// A preprocessed snapshot of a file.
 pub struct PreprocessedSnapshot {
@@ -72,25 +50,16 @@ impl Workspace {
     /// Load configuration from wgslpp.json if it exists.
     pub fn load_config(&mut self) {
         let config_path = self.root.join("wgslpp.json");
-        if let Ok(content) = std::fs::read_to_string(&config_path) {
-            if let Ok(config) = serde_json::from_str::<WorkspaceConfig>(&content) {
-                for pkg in &config.packages {
-                    let pkg_path = if Path::new(&pkg.path).is_absolute() {
-                        PathBuf::from(&pkg.path)
-                    } else {
-                        self.root.join(&pkg.path)
-                    };
-                    self.packages.add(pkg.name.clone(), pkg_path);
-                }
-                self.configurations = config.configurations;
+        if let Ok(config) = WgslppConfig::load(&config_path) {
+            self.packages = config.to_packages(&self.root);
+            self.configurations = config.configurations;
 
-                // Activate first configuration if available
-                if let Some(first_name) = self.configurations.keys().next().cloned() {
-                    self.activate_config(&first_name);
-                }
-
-                log::info!("Loaded config from {}", config_path.display());
+            // Activate first configuration if available
+            if let Some(first_name) = self.configurations.keys().next().cloned() {
+                self.activate_config(&first_name);
             }
+
+            log::info!("Loaded config from {}", config_path.display());
         }
     }
 

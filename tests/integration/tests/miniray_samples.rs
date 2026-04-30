@@ -7,6 +7,7 @@
 
 use std::path::PathBuf;
 
+use wgslpp_core::attributes::AttributeOverrides;
 use wgslpp_core::minify::minify;
 use wgslpp_core::reflect::reflect;
 use wgslpp_core::validate::validate;
@@ -172,7 +173,7 @@ fn sample_preserves_entry_points_basic_vert() {
     let info = result.module_info.unwrap();
 
     // Check entry points in reflection
-    let reflection = reflect(&module, &info);
+    let reflection = reflect(&module, &AttributeOverrides::default());
     let ep_names: Vec<&str> = reflection
         .entry_points
         .iter()
@@ -202,7 +203,7 @@ fn sample_preserves_entry_points_example() {
 
     let module = result.module.unwrap();
     let info = result.module_info.unwrap();
-    let reflection = reflect(&module, &info);
+    let reflection = reflect(&module, &AttributeOverrides::default());
 
     // example.wgsl has vertex, fragment, and compute entry points
     let _stages: Vec<&str> = reflection
@@ -230,7 +231,7 @@ fn sample_preserves_bindings_basic_vert() {
 
     let module = result.module.unwrap();
     let info = result.module_info.unwrap();
-    let reflection = reflect(&module, &info);
+    let reflection = reflect(&module, &AttributeOverrides::default());
 
     // Count @binding in source
     let source_bindings = source.matches("@binding").count();
@@ -277,7 +278,7 @@ fn main(@location(0) uv: vec2f) -> @location(0) vec4f {
 
     let module = result.module.unwrap();
     let info = result.module_info.unwrap();
-    let reflection = reflect(&module, &info);
+    let reflection = reflect(&module, &AttributeOverrides::default());
 
     // Verify bindings
     assert_eq!(reflection.bindings.len(), 3);
@@ -370,7 +371,7 @@ fn main() {
 
     let module = result.module.unwrap();
     let info = result.module_info.unwrap();
-    let reflection = reflect(&module, &info);
+    let reflection = reflect(&module, &AttributeOverrides::default());
 
     // Find struct with 3 fields
     let my_struct = reflection

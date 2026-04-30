@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use wgslpp_core::attributes::AttributeOverrides;
 use wgslpp_core::reflect::reflect;
 use wgslpp_core::validate::validate;
 use wgslpp_preprocess::packages::PackageRegistry;
@@ -31,9 +32,7 @@ fn test_reflect_simple_shader() {
     let source = std::fs::read_to_string(&path).unwrap();
     let result = validate(&source, None);
     let module = result.module.unwrap();
-    let info = result.module_info.unwrap();
-
-    let reflection = reflect(&module, &info);
+    let reflection = reflect(&module, &AttributeOverrides::default());
 
     assert_eq!(reflection.bindings.len(), 1);
     assert_eq!(reflection.bindings[0].group, 0);
@@ -146,8 +145,7 @@ fn test_full_pipeline_preprocess_validate_reflect() {
 
     // Reflect
     let module = validation.module.unwrap();
-    let info = validation.module_info.unwrap();
-    let reflection = reflect(&module, &info);
+    let reflection = reflect(&module, &AttributeOverrides::default());
 
     assert_eq!(reflection.entry_points.len(), 1);
     assert_eq!(reflection.entry_points[0].name, "fs_main");

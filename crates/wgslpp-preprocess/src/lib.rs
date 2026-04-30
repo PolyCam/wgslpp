@@ -1,4 +1,5 @@
 pub mod conditional;
+pub mod config;
 pub mod evaluator;
 pub mod include;
 pub mod macros;
@@ -57,6 +58,11 @@ pub struct PreprocessOutput {
     pub code: String,
     /// Source map: output lines -> original locations.
     pub source_map: SourceMap,
+    /// Final `#define` table after all directives have been processed.
+    /// Object-macro values are stored as their literal text; flag-style
+    /// `#define FOO` (no value) stores an empty string. Function-like macros
+    /// also store an empty string here (the full definition lives elsewhere).
+    pub defines: HashMap<String, String>,
 }
 
 /// Preprocess a WGSL file with `#include`, `#define`, `#ifdef`, etc.
@@ -93,6 +99,7 @@ pub fn preprocess(
     Ok(PreprocessOutput {
         code,
         source_map: ctx.source_map,
+        defines: ctx.defines,
     })
 }
 
@@ -124,6 +131,7 @@ pub fn preprocess_str(
     Ok(PreprocessOutput {
         code,
         source_map: ctx.source_map,
+        defines: ctx.defines,
     })
 }
 
