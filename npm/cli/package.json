@@ -2,10 +2,10 @@
   "name": "@polycam/wgslpp",
   "version": "0.0.0",
   "description": "WGSL preprocessor, validator, reflector, and minifier — binary plus typed API",
-  "homepage": "https://github.com/polycam/wgslpp",
+  "homepage": "https://github.com/PolyCam/wgslpp",
   "repository": {
     "type": "git",
-    "url": "https://github.com/polycam/wgslpp.git"
+    "url": "https://github.com/PolyCam/wgslpp.git"
   },
   "license": "MIT",
   "type": "module",

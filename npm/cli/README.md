@@ -111,4 +111,4 @@ with `--include=optional`.
 
 ## Source
 
-<https://github.com/polycam/wgslpp>
+<https://github.com/PolyCam/wgslpp>

@@ -24,7 +24,7 @@ Supported platforms: macOS arm64, Linux x86_64, Windows x86_64. The right binary
 
 ### GitHub Releases
 
-Every tagged release publishes prebuilt binaries and editor extensions on the [Releases page](https://github.com/polycam/wgslpp/releases). Useful when you don't want npm in the loop or when shipping the binaries through your own packaging.
+Every tagged release publishes prebuilt binaries and editor extensions on the [Releases page](https://github.com/PolyCam/wgslpp/releases). Useful when you don't want npm in the loop or when shipping the binaries through your own packaging.
 
 | Asset                                    | Contents                                                     |
 | ---------------------------------------- | ------------------------------------------------------------ |

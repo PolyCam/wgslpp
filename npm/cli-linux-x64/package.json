@@ -2,10 +2,10 @@
   "name": "@polycam/wgslpp-linux-x64",
   "version": "0.0.0",
   "description": "wgslpp prebuilt binary for Linux x86_64. Installed automatically by @polycam/wgslpp on matching hosts.",
-  "homepage": "https://github.com/polycam/wgslpp",
+  "homepage": "https://github.com/PolyCam/wgslpp",
   "repository": {
     "type": "git",
-    "url": "https://github.com/polycam/wgslpp.git"
+    "url": "https://github.com/PolyCam/wgslpp.git"
   },
   "license": "MIT",
   "os": ["linux"],
