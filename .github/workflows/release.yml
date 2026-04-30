@@ -228,7 +228,10 @@ jobs:
           corepack enable
           yarn install --immutable
           yarn compile
-          npx --yes @vscode/vsce package --target ${{ matrix.vsce_target }} --yarn -o "../wgslpp-${{ matrix.vsce_target }}.vsix"
+          # Note: omit `--yarn` flag. vsce's yarn integration calls
+          # `yarn list --prod --json`, which Yarn 4 dropped — vsce reads
+          # node_modules directly without it, which is what we want.
+          npx --yes @vscode/vsce package --target ${{ matrix.vsce_target }} -o "../wgslpp-${{ matrix.vsce_target }}.vsix"
 
       - uses: actions/upload-artifact@v4
         with:
