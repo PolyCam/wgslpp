@@ -78,13 +78,33 @@ function getServerPath(): string | undefined {
         return configPath;
     }
 
-    // Search common locations
+    // Marketplace builds bundle the LSP binary inside the extension under
+    // `bin/`. The exact filename includes the platform suffix because vsce
+    // packages a separate .vsix per target — see the release workflow.
+    const exe = process.platform === 'win32' ? 'wgslpp-lsp.exe' : 'wgslpp-lsp';
     const candidates = [
-        'wgslpp-lsp', // In PATH
-        path.join(__dirname, '..', '..', 'target', 'release', 'wgslpp-lsp'),
-        path.join(__dirname, '..', '..', 'target', 'debug', 'wgslpp-lsp'),
+        // Bundled with the published extension.
+        path.join(__dirname, '..', 'bin', exe),
+        // Local dev: `cargo build [--release] -p wgslpp-lsp` from the repo root.
+        path.join(__dirname, '..', '..', 'target', 'release', exe),
+        path.join(__dirname, '..', '..', 'target', 'debug', exe),
+        // Last resort: PATH lookup (e.g. for users that built and installed
+        // wgslpp-lsp manually).
+        'wgslpp-lsp',
     ];
 
-    // For now, return the first candidate and let the LSP client handle errors
-    return candidates[0];
+    for (const candidate of candidates) {
+        // For absolute paths, only use them if the file exists; for the bare
+        // command name we always fall through and let spawn handle the lookup.
+        if (path.isAbsolute(candidate)) {
+            try {
+                require('fs').accessSync(candidate);
+                return candidate;
+            } catch {
+                continue;
+            }
+        }
+        return candidate;
+    }
+    return undefined;
 }

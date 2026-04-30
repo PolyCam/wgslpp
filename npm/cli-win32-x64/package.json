@@ -1,0 +1,17 @@
+{
+  "name": "@polycam/wgslpp-win32-x64",
+  "version": "0.0.0",
+  "description": "wgslpp prebuilt binary for Windows x86_64. Installed automatically by @polycam/wgslpp on matching hosts.",
+  "homepage": "https://github.com/polycam/wgslpp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/polycam/wgslpp.git"
+  },
+  "license": "MIT",
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "files": ["bin/wgslpp.exe"],
+  "bin": {
+    "wgslpp": "bin/wgslpp.exe"
+  }
+}

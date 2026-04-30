@@ -1,0 +1,39 @@
+{
+  "name": "@polycam/wgslpp",
+  "version": "0.0.0",
+  "description": "WGSL preprocessor, validator, reflector, and minifier — binary plus typed API",
+  "homepage": "https://github.com/polycam/wgslpp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/polycam/wgslpp.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "bin": {
+    "wgslpp": "bin/wgslpp.js"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "binary.js",
+    "binary.d.ts",
+    "bin/wgslpp.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "optionalDependencies": {
+    "@polycam/wgslpp-darwin-arm64": "0.0.0",
+    "@polycam/wgslpp-linux-x64": "0.0.0",
+    "@polycam/wgslpp-win32-x64": "0.0.0"
+  }
+}
