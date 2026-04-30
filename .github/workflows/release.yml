@@ -124,10 +124,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # node 22 ships npm ≥ 11.5.1, which is the minimum that knows how
-          # to do the OIDC exchange. Older npm silently falls back to
-          # token-based auth and fails.
-          node-version: 22
+          # node 24 ships npm ≥ 11.5.1, which is the minimum that knows
+          # how to do the trusted-publishing OIDC exchange. node 22 only
+          # ships npm 10.x — provenance signing still works there
+          # (sigstore is a separate path), but the actual publish PUT
+          # silently falls back to token auth and fails with a misleading
+          # 404 against the registry.
+          node-version: 24
           registry-url: https://registry.npmjs.org
 
       - uses: actions/download-artifact@v4
@@ -196,7 +199,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - uses: actions/download-artifact@v4
         with:
@@ -228,10 +231,12 @@ jobs:
           corepack enable
           yarn install --immutable
           yarn compile
-          # Note: omit `--yarn` flag. vsce's yarn integration calls
-          # `yarn list --prod --json`, which Yarn 4 dropped — vsce reads
-          # node_modules directly without it, which is what we want.
-          npx --yes @vscode/vsce package --target ${{ matrix.vsce_target }} -o "../wgslpp-${{ matrix.vsce_target }}.vsix"
+          # `--no-dependencies` skips vsce's prod-dep walking, which
+          # auto-detects yarn from yarn.lock and tries to invoke
+          # `yarn list --prod --json` — a Yarn 1 command that Yarn 4
+          # doesn't ship. Our `yarn install` has already populated
+          # node_modules, so vsce just bundles what's there.
+          npx --yes @vscode/vsce package --no-dependencies --target ${{ matrix.vsce_target }} -o "../wgslpp-${{ matrix.vsce_target }}.vsix"
 
       - uses: actions/upload-artifact@v4
         with:
