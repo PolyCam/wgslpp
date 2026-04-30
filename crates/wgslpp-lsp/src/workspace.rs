@@ -145,15 +145,80 @@ impl Workspace {
 }
 
 /// Convert a file URI to a filesystem path.
+///
+/// Handles both Unix-style URIs (`file:///foo/bar`) and Windows-style
+/// (`file:///C:/foo/bar`). On Windows, the leading slash before the drive
+/// letter is part of the URI's path component and is dropped so the result
+/// is a usable filesystem path.
 pub fn uri_to_path(uri: &str) -> Option<PathBuf> {
-    if let Some(path) = uri.strip_prefix("file://") {
-        Some(PathBuf::from(path))
+    let stripped = uri.strip_prefix("file://")?;
+    // `file:///C:/foo` -> stripped is `/C:/foo`; we want `C:/foo`. The drive
+    // letter signature is `/X:` at the start.
+    let bytes = stripped.as_bytes();
+    let path = if bytes.first() == Some(&b'/')
+        && bytes.get(2) == Some(&b':')
+        && bytes.get(1).is_some_and(|b| b.is_ascii_alphabetic())
+    {
+        &stripped[1..]
     } else {
-        None
-    }
+        stripped
+    };
+    Some(PathBuf::from(path))
 }
 
 /// Convert a filesystem path to a file URI.
+///
+/// On Unix this is `file://` + the path. On Windows the path uses
+/// backslashes which aren't valid URI characters, so we normalise to
+/// forward slashes and prepend an extra `/` so the drive letter ends up
+/// after the authority (e.g. `C:\foo` → `file:///C:/foo`). We also strip
+/// the `\\?\` extended-length prefix that `Path::canonicalize` returns on
+/// Windows — it'd otherwise yield `file:////?/C:/foo`, which most URI
+/// parsers reject.
 pub fn path_to_uri(path: &Path) -> String {
-    format!("file://{}", path.display())
+    let raw = path.display().to_string();
+    let normalized: String = raw.replace('\\', "/");
+    let trimmed = normalized
+        .strip_prefix("//?/")
+        .or_else(|| normalized.strip_prefix("//./"))
+        .unwrap_or(&normalized);
+    if trimmed.starts_with('/') {
+        format!("file://{}", trimmed)
+    } else {
+        // Windows drive-letter form: `C:/foo` -> `file:///C:/foo`.
+        format!("file:///{}", trimmed)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unix_path_roundtrip() {
+        let p = PathBuf::from("/tmp/foo/bar.wgsl");
+        let uri = path_to_uri(&p);
+        assert_eq!(uri, "file:///tmp/foo/bar.wgsl");
+        assert_eq!(uri_to_path(&uri).unwrap(), p);
+    }
+
+    #[test]
+    fn windows_drive_path_roundtrip() {
+        // Spelled with forward slashes since `Path` accepts both on all
+        // platforms — we only need to verify the URI-shape logic, which
+        // doesn't care about the OS.
+        let raw = "C:/Users/runner/file.wgsl";
+        let uri = path_to_uri(Path::new(raw));
+        assert_eq!(uri, "file:///C:/Users/runner/file.wgsl");
+        let back = uri_to_path(&uri).unwrap();
+        assert_eq!(back.to_string_lossy().replace('\\', "/"), raw);
+    }
+
+    #[test]
+    fn windows_extended_path_is_stripped() {
+        // `\\?\C:\foo` is what canonicalize returns on Windows.
+        let p = "\\\\?\\C:\\Users\\runner\\file.wgsl";
+        let uri = path_to_uri(Path::new(p));
+        assert_eq!(uri, "file:///C:/Users/runner/file.wgsl");
+    }
 }
