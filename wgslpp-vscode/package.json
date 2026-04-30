@@ -2,8 +2,25 @@
   "name": "wgslpp",
   "displayName": "WGSL++",
   "description": "WGSL language support with preprocessor, validation, and optimization",
-  "version": "0.1.0",
-  "publisher": "polycam",
+  "version": "0.1.1",
+  "publisher": "PolyCam",
+  "license": "MIT",
+  "icon": "icon.png",
+  "homepage": "https://github.com/PolyCam/wgslpp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PolyCam/wgslpp"
+  },
+  "bugs": {
+    "url": "https://github.com/PolyCam/wgslpp/issues"
+  },
+  "keywords": [
+    "wgsl",
+    "shader",
+    "webgpu",
+    "preprocessor",
+    "lsp"
+  ],
   "engines": {
     "vscode": "^1.85.0"
   },

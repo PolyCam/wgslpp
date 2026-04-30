@@ -1,0 +1,36 @@
+# Build inputs (we ship the compiled output in `out/`).
+src/**
+tsconfig.json
+.eslintrc*
+.prettier*
+
+# Yarn / package manager scaffolding (Yarn 4 PnP files, plugins, caches).
+.yarn/**
+.yarnrc.yml
+.pnp.*
+yarn.lock
+package-lock.json
+node_modules/.cache/**
+node_modules/**/*.md
+node_modules/**/*.ts
+node_modules/**/*.map
+node_modules/**/test/**
+node_modules/**/tests/**
+node_modules/**/__tests__/**
+
+# Source maps and TS build artifacts (we don't ship a sourcemap-able build).
+out/**/*.map
+out/**/*.d.ts
+
+# Editor / OS noise.
+.vscode-test/**
+.vscode/**
+.git/**
+.github/**
+.gitignore
+.gitattributes
+.DS_Store
+*.log
+
+# Previously built .vsix files in this directory.
+*.vsix

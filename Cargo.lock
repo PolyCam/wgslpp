@@ -787,7 +787,7 @@ dependencies = [
 
 [[package]]
 name = "wgslpp-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "serde_json",
@@ -797,7 +797,7 @@ dependencies = [
 
 [[package]]
 name = "wgslpp-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "naga",
  "serde",
@@ -818,7 +818,7 @@ dependencies = [
 
 [[package]]
 name = "wgslpp-lsp"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "env_logger",
  "log",
@@ -834,7 +834,7 @@ dependencies = [
 
 [[package]]
 name = "wgslpp-preprocess"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",

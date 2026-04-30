@@ -244,12 +244,14 @@ jobs:
           path: wgslpp-${{ matrix.vsce_target }}.vsix
           retention-days: 7
 
-      # Uncomment once you're ready to push to the marketplace from CI:
+      # Uncomment once you're ready to push to the marketplace from CI.
+      # VSCE_PAT must be an Azure DevOps PAT scoped to "Marketplace: Manage"
+      # across All accessible organizations (single-org PATs silently fail).
       # - name: Publish to marketplace
       #   working-directory: wgslpp-vscode
       #   env:
       #     VSCE_PAT: ${{ secrets.VSCE_PAT }}
-      #   run: npx --yes @vscode/vsce publish --packagePath "../wgslpp-${{ matrix.vsce_target }}.vsix"
+      #   run: npx --yes @vscode/vsce publish --no-dependencies --packagePath "../wgslpp-${{ matrix.vsce_target }}.vsix"
 
   release:
     name: Create GitHub Release
